@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Proxigo — Find local workers near you</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>Proxigo</h1>
+      <p class="tagline">Find local workers near you</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="controls">
+      <div class="control-group">
+        <label for="category">Category</label>
+        <select id="category">
+          <option value="">-- Select --</option>
+          <option value="Plumber">Plumber</option>
+          <option value="Electrician">Electrician</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label for="address">Address</label>
+        <select id="address">
+          <option value="">-- Select --</option>
+          <option value="Manaitand">Manaitand</option>
+          <option value="Barmaisa">Barmaisa</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <button id="searchBtn" class="btn">Search Workers</button>
+      </div>
+    </section>
+
+    <section id="results" class="results">
+      <!-- Worker cards will be injected here -->
+    </section>
+  </main>
+
+  <!-- Full screen modal for full info + add review -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-header">
+      <button id="modalBack" class="back-btn">← Back</button>
+      <h2 id="modalTitle">Worker Info</h2>
+    </div>
+    <div id="modalContent" class="modal-content">
+      <!-- full details injected here -->
+    </div>
+  </div>
+
+  <!-- Contact button top-right -->
+  <div id="contactBtn" class="contact-btn" title="Contact Us">Contact</div>
+  <div id="contactCard" class="contact-card hidden">
+    <p><strong>Call:</strong> 9758345621</p>
+    <p><strong>Email:</strong> ayush8900123@gmail.com</p>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
