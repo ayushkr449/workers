@@ -18,7 +18,7 @@
     <section class="controls">
       <div class="control-group">
         <label for="category">Category</label>
-        <select id="category">
+        <select id="category" aria-label="Select category">
           <option value="">-- Select --</option>
           <option value="Plumber">Plumber</option>
           <option value="Electrician">Electrician</option>
@@ -27,7 +27,7 @@
 
       <div class="control-group">
         <label for="address">Address</label>
-        <select id="address">
+        <select id="address" aria-label="Select address">
           <option value="">-- Select --</option>
           <option value="Manaitand">Manaitand</option>
           <option value="Barmaisa">Barmaisa</option>
@@ -39,25 +39,25 @@
       </div>
     </section>
 
-    <section id="results" class="results">
+    <section id="results" class="results" aria-live="polite">
       <!-- Worker cards will be injected here -->
     </section>
   </main>
 
   <!-- Full screen modal for full info + add review -->
-  <div id="modal" class="modal hidden">
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
     <div class="modal-header">
-      <button id="modalBack" class="back-btn">← Back</button>
+      <button id="modalBack" class="back-btn" aria-label="Back">← Back</button>
       <h2 id="modalTitle">Worker Info</h2>
     </div>
-    <div id="modalContent" class="modal-content">
+    <div id="modalContent" class="modal-content" tabindex="0">
       <!-- full details injected here -->
     </div>
   </div>
 
   <!-- Contact button top-right -->
   <div id="contactBtn" class="contact-btn" title="Contact Us">Contact</div>
-  <div id="contactCard" class="contact-card hidden">
+  <div id="contactCard" class="contact-card hidden" aria-hidden="true">
     <p><strong>Call:</strong> 9758345621</p>
     <p><strong>Email:</strong> ayush8900123@gmail.com</p>
   </div>
