@@ -1,11 +1,8 @@
 // app.js
-// Replace BIN_ID if you have another. This is the workers bin id you supplied earlier.
-const WORKERS_BIN_ID = "690b9427d0ea881f40d61cd1";
-const JSONBIN_BASE = "https://api.jsonbin.io/v3/b";
+// Frontend logic: GET workers from backend and POST reviews to backend proxy.
+// Proxy endpoints are relative so they work when you deploy frontend + api on same Vercel project.
 
-// Proxy endpoint (you must deploy the serverless function and replace this URL)
-const PROXY_REVIEW_ENDPOINT = "/api/review"; // If you host proxy on same domain via Vercel, this works.
-// If proxy is deployed at e.g. https://your-vercel.app/api/review, replace above with full URL.
+const PROXY_ENDPOINT = "/api/review"; // same project -> relative path
 
 const categoryEl = document.getElementById("category");
 const addressEl = document.getElementById("address");
@@ -21,29 +18,24 @@ contactBtn.addEventListener("click", () => {
   contactCard.classList.toggle("hidden");
 });
 
-modalBack.addEventListener("click", () => {
-  closeModal();
-});
+modalBack.addEventListener("click", () => closeModal());
 
-// helper: fetch workers JSON from JSONBin (public read assumed)
-async function fetchWorkers() {
-  const url = `${JSONBIN_BASE}/${WORKERS_BIN_ID}/latest`;
+// get workers via backend (backend will read JSONBin using env key)
+async function fetchWorkersFromProxy() {
+  const url = PROXY_ENDPOINT; // GET
   const res = await fetch(url);
-  if (!res.ok) throw new Error("Failed to fetch workers");
+  if (!res.ok) throw new Error("Failed to fetch workers from backend.");
   const data = await res.json();
-  // JSONbin v3 wraps content in record; try to extract sensible array
-  // If your bin content is directly an array, it might be in data.record or data;
-  return data.record || data || [];
+  // backend returns { ok: true, data: [...] }
+  return data.data || [];
 }
 
-// compute average rating from reviews array
 function avgRating(reviews) {
   if (!Array.isArray(reviews) || reviews.length === 0) return "No ratings";
   const sum = reviews.reduce((s, r) => s + (Number(r.rating) || 0), 0);
   return (sum / reviews.length).toFixed(1);
 }
 
-// render cards
 function renderWorkers(list) {
   resultsEl.innerHTML = "";
   if (!list.length) {
@@ -69,7 +61,6 @@ function renderWorkers(list) {
   });
 }
 
-// open full-screen modal and show full info plus review form
 function openModal(worker) {
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
@@ -93,9 +84,9 @@ function openModal(worker) {
           <div id="reviewItems">
             ${(Array.isArray(worker.Reviews) ? worker.Reviews : []).map(r=>`
               <div class="review-item">
-                <strong>${r.user || "Anon"}</strong> — ${r.rating}/5
-                <div style="color:var(--muted);font-size:13px">${r.comment || ""}</div>
-                <div style="font-size:12px;color:#9aa">${r.date || ""}</div>
+                <strong>${escapeHtml(r.user || "Anon")}</strong> — ${escapeHtml(String(r.rating || ""))}/5
+                <div style="color:var(--muted);font-size:13px">${escapeHtml(r.comment || "")}</div>
+                <div style="font-size:12px;color:#9aa">${escapeHtml(r.date || "")}</div>
               </div>
             `).join("")}
           </div>
@@ -106,6 +97,95 @@ function openModal(worker) {
           <div class="form-row">
             <input id="revName" placeholder="Your name" />
             <input id="revRating" placeholder="Rating 1-5" type="number" min="1" max="5" />
+          </div>
+          <div class="form-row" style="margin-top:8px;">
+            <textarea id="revComment" placeholder="Your comment"></textarea>
+          </div>
+          <div style="margin-top:8px;">
+            <button id="submitReview" class="btn">Submit Review</button>
+            <span id="revStatus" style="margin-left:10px;color:var(--muted)"></span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  document.getElementById("submitReview").addEventListener("click", async () => {
+    const name = document.getElementById("revName").value.trim() || "Anon";
+    let rating = Number(document.getElementById("revRating").value);
+    if (!rating || rating < 1) rating = 5;
+    const comment = document.getElementById("revComment").value.trim() || "";
+    const status = document.getElementById("revStatus");
+    status.textContent = "Saving...";
+
+    try {
+      const payload = {
+        identifier: { PhoneNumber: worker.PhoneNumber },
+        review: { user: name, rating, comment, date: new Date().toISOString().split('T')[0] }
+      };
+      const res = await fetch(PROXY_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result?.message || "Failed to save review");
+      status.textContent = "Saved ✓";
+      // prepend to UI
+      const reviewItems = document.getElementById("reviewItems");
+      const div = document.createElement("div");
+      div.className = "review-item";
+      div.innerHTML = `<strong>${escapeHtml(name)}</strong> — ${escapeHtml(String(rating))}/5 <div style="color:var(--muted);font-size:13px">${escapeHtml(comment)}</div><div style="font-size:12px;color:#9aa">${new Date().toISOString().split('T')[0]}</div>`;
+      reviewItems.prepend(div);
+    } catch (err) {
+      console.error(err);
+      status.textContent = "Save failed: " + (err.message || "");
+    }
+  });
+}
+
+function closeModal() {
+  modal.classList.add("hidden");
+  modalContent.innerHTML = "";
+  document.body.style.overflow = "";
+}
+
+// escape to avoid basic HTML injection in inserted strings
+function escapeHtml(s){
+  return String(s || "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c]));
+}
+
+// search click
+searchBtn.addEventListener("click", async () => {
+  const cat = categoryEl.value;
+  const addr = addressEl.value;
+  if (!cat || !addr) {
+    alert("Please select both category and address.");
+    return;
+  }
+  resultsEl.innerHTML = `<p style="color:var(--muted)">Loading...</p>`;
+  try {
+    const workers = await fetchWorkersFromProxy();
+    const arr = Array.isArray(workers) ? workers : (workers.workers || workers.data || []);
+    const filtered = (arr || []).filter(w => {
+      const matchCat = String(w.Category || "").toLowerCase() === String(cat).toLowerCase();
+      const addrStr = String(w.Address || "").toLowerCase();
+      const expected = String(addr || "").toLowerCase();
+      const matchAddr = addrStr.includes("maint") && expected.includes("mai")
+                     || addrStr.includes("bar") && expected.includes("bar")
+                     || addrStr.includes(expected);
+      return matchCat && matchAddr;
+    });
+    renderWorkers(filtered);
+  } catch (err) {
+    console.error(err);
+    resultsEl.innerHTML = `<p style="color:red">Failed to load workers from backend. Make sure backend is deployed and env vars are set.</p>`;
+  }
+});
+
+// initial hint
+resultsEl.innerHTML = `<p style="color:var(--muted)">Choose category and address then click "Search Workers".</p>`;            <input id="revRating" placeholder="Rating 1-5" type="number" min="1" max="5" />
           </div>
           <div class="form-row" style="margin-top:8px;">
             <textarea id="revComment" placeholder="Your comment"></textarea>
